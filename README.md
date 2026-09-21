@@ -1,4 +1,4 @@
-# EMAK-Client-Workflow-and-Task-Management-System
+# EMAK Client Workflow and Task Management System
 A web-based project and task management platform designed for an architectural firm to improve team coordination, project milestones, and document tracking.
 ## Overview
 This platform provides a centralized dashboard for managing architectural projects, assigning tasks, tracking milestones, and organizing project documentation. It enhances visibility across active work, reduces missed deadlines, and improves internal and client project coordination.
