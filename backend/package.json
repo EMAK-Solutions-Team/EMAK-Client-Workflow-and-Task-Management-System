@@ -1,12 +1,14 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Authentication API for the EMAK workflow system",
+  "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node src/server.ts",
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "db:schema": "ts-node src/applySchema.ts",
+    "start": "node dist/server.js",
+    "test": "tsc && node --test test/*.test.js"
   },
   "keywords": [],
   "author": "",
