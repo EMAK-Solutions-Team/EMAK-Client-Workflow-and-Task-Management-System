@@ -54,6 +54,18 @@ export interface Project extends ProjectInput {
   milestones: Milestone[];
 }
 
+export type ProjectActivityAction = 'Created' | 'Updated';
+
+export interface ProjectActivity {
+  id: number;
+  projectId: number | null;
+  changedBy: number | null;
+  changedByName: string | null;
+  action: ProjectActivityAction;
+  details: string;
+  createdAt: string;
+}
+
 export interface ClientSummary {
   id: number;
   name: string;

@@ -78,6 +78,14 @@ test('manager completes project CRUD while other roles receive read-only access'
   assert.equal(created.body.project.milestones.length, 2);
 
   const projectId = created.body.project.id;
+  const createdActivity = await request(`/api/projects/${projectId}/activity`, managerToken);
+  assert.equal(createdActivity.response.status, 200);
+  assert.equal(createdActivity.body.activity.length, 1);
+  assert.equal(createdActivity.body.activity[0].action, 'Created');
+  assert.equal(createdActivity.body.activity[0].changedBy, 1);
+  assert.equal(createdActivity.body.activity[0].changedByName, 'Kasper Luboinski');
+  assert.equal(Number.isNaN(Date.parse(createdActivity.body.activity[0].createdAt)), false);
+
   const memberList = await request('/api/projects', memberToken);
   assert.equal(memberList.response.status, 200);
   assert.equal(memberList.body.projects.length, 1);
@@ -98,6 +106,20 @@ test('manager completes project CRUD while other roles receive read-only access'
   assert.equal(updated.response.status, 200);
   assert.equal(updated.body.project.name, 'Community Centre Expansion');
   assert.equal(updated.body.project.status, 'Active');
+
+  const updatedActivity = await request(`/api/projects/${projectId}/activity`, managerToken);
+  assert.equal(updatedActivity.response.status, 200);
+  assert.deepEqual(
+    updatedActivity.body.activity.map((activity) => activity.action),
+    ['Updated', 'Created']
+  );
+  assert.equal(updatedActivity.body.activity[0].details, 'Project details and milestones were updated.');
+
+  const memberActivity = await request(`/api/projects/${projectId}/activity`, memberToken);
+  assert.equal(memberActivity.response.status, 403);
+
+  const clientActivity = await request(`/api/projects/${projectId}/activity`, clientToken);
+  assert.equal(clientActivity.response.status, 403);
 
   const deleted = await request(`/api/projects/${projectId}`, managerToken, { method: 'DELETE' });
   assert.equal(deleted.response.status, 204);

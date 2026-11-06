@@ -1,9 +1,11 @@
 import { pool } from './db';
-import { JWTPayload, Milestone, Project, ProjectInput } from './types';
+import { JWTPayload, Milestone, Project, ProjectActivity, ProjectInput } from './types';
 
 let nextProjectId = 1;
 let nextMilestoneId = 1;
+let nextActivityId = 1;
 let memoryProjects: Project[] = [];
+let memoryProjectActivity: ProjectActivity[] = [];
 
 const projectSelect = `
   SELECT
@@ -38,6 +40,23 @@ function copyProject(project: Project): Project {
     ...project,
     milestones: project.milestones.map((milestone) => ({ ...milestone }))
   };
+}
+
+function addMemoryActivity(
+  projectId: number,
+  changedBy: number,
+  action: ProjectActivity['action'],
+  details: string
+) {
+  memoryProjectActivity.push({
+    id: nextActivityId++,
+    projectId,
+    changedBy,
+    changedByName: changedBy === 1 ? 'Kasper Luboinski' : null,
+    action,
+    details,
+    createdAt: new Date().toISOString()
+  });
 }
 
 export async function listProjectsForUser(user: JWTPayload): Promise<Project[]> {
@@ -93,6 +112,7 @@ export async function createProject(input: ProjectInput, createdBy: number): Pro
       }))
     };
     memoryProjects.push(project);
+    addMemoryActivity(project.id, createdBy, 'Created', `Project "${project.name}" was created.`);
     return copyProject(project);
   }
 
@@ -116,6 +136,12 @@ export async function createProject(input: ProjectInput, createdBy: number): Pro
       );
     }
 
+    await client.query(
+      `INSERT INTO project_activity (project_id, changed_by, action, details)
+       VALUES ($1, $2, 'Created', $3)`,
+      [projectId, createdBy, `Project "${input.name}" was created.`]
+    );
+
     await client.query('COMMIT');
     const created = await getProjectForUser(projectId, {
       id: createdBy,
@@ -133,7 +159,7 @@ export async function createProject(input: ProjectInput, createdBy: number): Pro
   }
 }
 
-export async function updateProject(id: number, input: ProjectInput): Promise<Project | null> {
+export async function updateProject(id: number, input: ProjectInput, changedBy: number): Promise<Project | null> {
   if (!process.env.DATABASE_URL) {
     const index = memoryProjects.findIndex((project) => project.id === id);
     if (index === -1) return null;
@@ -150,6 +176,7 @@ export async function updateProject(id: number, input: ProjectInput): Promise<Pr
       }))
     };
     memoryProjects[index] = updated;
+    addMemoryActivity(id, changedBy, 'Updated', 'Project details and milestones were updated.');
     return copyProject(updated);
   }
 
@@ -181,6 +208,12 @@ export async function updateProject(id: number, input: ProjectInput): Promise<Pr
       );
     }
 
+    await client.query(
+      `INSERT INTO project_activity (project_id, changed_by, action, details)
+       VALUES ($1, $2, 'Updated', 'Project details and milestones were updated.')`,
+      [id, changedBy]
+    );
+
     await client.query('COMMIT');
     return getProjectForUser(id, { id: 0, name: '', email: '', role: 'Manager' });
   } catch (error) {
@@ -189,6 +222,32 @@ export async function updateProject(id: number, input: ProjectInput): Promise<Pr
   } finally {
     client.release();
   }
+}
+
+export async function listProjectActivity(projectId: number): Promise<ProjectActivity[]> {
+  if (!process.env.DATABASE_URL) {
+    return memoryProjectActivity
+      .filter((activity) => activity.projectId === projectId)
+      .sort((a, b) => b.id - a.id)
+      .map((activity) => ({ ...activity }));
+  }
+
+  const result = await pool.query<ProjectActivity>(
+    `SELECT
+       pa.id,
+       pa.project_id AS "projectId",
+       pa.changed_by AS "changedBy",
+       u.name AS "changedByName",
+       pa.action,
+       pa.details,
+       pa.created_at::text AS "createdAt"
+     FROM project_activity pa
+     LEFT JOIN users u ON u.id = pa.changed_by
+     WHERE pa.project_id = $1
+     ORDER BY pa.created_at DESC, pa.id DESC`,
+    [projectId]
+  );
+  return result.rows;
 }
 
 export async function deleteProject(id: number): Promise<boolean> {
