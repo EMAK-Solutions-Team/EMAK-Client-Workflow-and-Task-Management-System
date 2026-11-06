@@ -1,5 +1,36 @@
 export type UserRole = 'Manager' | 'Team Member' | 'Client';
 
+export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
+
+export type TaskStatus = 'To Do' | 'In Progress' | 'Review' | 'Completed';
+
+export interface TaskInput {
+  projectId: number;
+  assignedTo: number;
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  dueDate: string;
+}
+
+export interface Task extends TaskInput {
+  id: number;
+  status: TaskStatus;
+  progressPercentage: number;
+  assignedToName?: string;
+  projectName?: string;
+  createdBy: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeamMemberSummary {
+  id: number;
+  name: string;
+  email: string;
+}
+
+
 export interface AuthUser {
   id: number;
   name: string;
