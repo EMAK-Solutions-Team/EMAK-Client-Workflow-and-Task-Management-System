@@ -57,6 +57,10 @@ CREATE TABLE IF NOT EXISTS tasks (
     CHECK (status IN ('Pending', 'In Progress', 'Completed'))
 );
 
+ALTER TABLE tasks
+  ADD COLUMN IF NOT EXISTS progress INTEGER NOT NULL DEFAULT 0
+    CHECK (progress BETWEEN 0 AND 100);
+
 CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects(client_id);
 CREATE INDEX IF NOT EXISTS idx_milestones_project_id ON milestones(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_activity_project_id ON project_activity(project_id);
