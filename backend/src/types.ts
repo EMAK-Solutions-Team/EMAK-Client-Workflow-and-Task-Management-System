@@ -81,3 +81,5 @@ export interface Task {
   status: 'Pending' | 'In Progress' | 'Completed';
   progress: number;
 }
+
+export type TaskUpdateInput = Pick<Task, 'status' | 'progress'>;
