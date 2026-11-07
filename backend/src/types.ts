@@ -71,3 +71,12 @@ export interface ClientSummary {
   name: string;
   email: string;
 }
+
+export interface Task {
+  id: number;
+  projectId: number;
+  assignedTo: number;
+  title: string;
+  dueDate: string | null;
+  status: 'Pending' | 'In Progress' | 'Completed';
+}
