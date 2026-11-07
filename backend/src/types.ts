@@ -79,4 +79,5 @@ export interface Task {
   title: string;
   dueDate: string | null;
   status: 'Pending' | 'In Progress' | 'Completed';
+  progress: number;
 }

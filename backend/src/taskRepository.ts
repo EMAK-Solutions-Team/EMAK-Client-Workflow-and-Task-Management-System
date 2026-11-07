@@ -10,7 +10,8 @@ export async function listTasksForUser(user: JWTPayload): Promise<Task[]> {
             assigned_to AS "assignedTo",
             title,
             due_date::text AS "dueDate",
-            status
+            status,
+            progress
      FROM tasks
      WHERE assigned_to = $1
      ORDER BY due_date ASC NULLS LAST, id`,
