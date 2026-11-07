@@ -1,4 +1,4 @@
-import { AuthSession, AuthUser, ClientSummary, Project, ProjectInput } from './types';
+import { AuthSession, AuthUser, ClientSummary, Project, ProjectInput, Task } from './types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
@@ -49,13 +49,18 @@ async function authorizedRequest<T>(path: string, token: string, options: Reques
 
   if (response.status === 204) return undefined as T;
   const body = await response.json();
-  if (!response.ok) throw new Error(body.error || 'Project request failed.');
+  if (!response.ok) throw new Error(body.error || 'Request failed.');
   return body;
 }
 
 export async function listProjectsRequest(token: string): Promise<Project[]> {
   const body = await authorizedRequest<{ projects: Project[] }>('/projects', token);
   return body.projects;
+}
+
+export async function listTasksRequest(token: string): Promise<Task[]> {
+  const body = await authorizedRequest<{ tasks: Task[] }>('/tasks', token);
+  return body.tasks;
 }
 
 export async function listClientsRequest(token: string): Promise<ClientSummary[]> {
