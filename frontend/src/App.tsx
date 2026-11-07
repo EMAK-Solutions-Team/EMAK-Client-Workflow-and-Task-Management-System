@@ -2,6 +2,7 @@ import { FormEvent, ReactNode, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { rolePath, useAuth } from './auth';
 import ProjectsSection from './ProjectsSection';
+import TasksSection from './TasksSection';
 import { UserRole } from './types';
 
 function ProtectedRoute({ role, children }: { role: UserRole; children: ReactNode }) {
@@ -73,7 +74,7 @@ function LoginPage() {
 }
 
 function DashboardPage({ role }: { role: UserRole }) {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const navigate = useNavigate();
 
   async function handleLogout() {
@@ -87,6 +88,7 @@ function DashboardPage({ role }: { role: UserRole }) {
         <h1>{role} Dashboard</h1>
         <p>Signed in as {user?.name}.</p>
         <button type="button" onClick={handleLogout}>Logout</button>
+        {role === 'Team Member' && <TasksSection key={token} />}
         <ProjectsSection />
       </section>
     </main>
