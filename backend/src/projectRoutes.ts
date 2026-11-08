@@ -5,6 +5,7 @@ import {
   createProject,
   deleteProject,
   getProjectForUser,
+  listProjectActivity,
   listProjectsForUser,
   updateProject
 } from './projectRepository';
@@ -79,6 +80,22 @@ projectRouter.get('/', async (req: AuthenticatedRequest, res) => {
   }
 });
 
+projectRouter.get('/:id/activity', authorizeRoles('Manager'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const projectId = Number(req.params.id);
+    const project = await getProjectForUser(projectId, req.user!);
+    if (!project) {
+      res.status(404).json({ success: false, error: 'Project not found.' });
+      return;
+    }
+
+    const activity = await listProjectActivity(projectId);
+    res.json({ success: true, activity });
+  } catch (error) {
+    serverError(res, error);
+  }
+});
+
 projectRouter.get('/:id', async (req: AuthenticatedRequest, res) => {
   try {
     const project = await getProjectForUser(Number(req.params.id), req.user!);
@@ -127,7 +144,7 @@ projectRouter.put('/:id', authorizeRoles('Manager'), async (req: AuthenticatedRe
       return;
     }
 
-    const project = await updateProject(Number(req.params.id), input);
+    const project = await updateProject(Number(req.params.id), input, req.user!.id);
     if (!project) {
       res.status(404).json({ success: false, error: 'Project not found.' });
       return;

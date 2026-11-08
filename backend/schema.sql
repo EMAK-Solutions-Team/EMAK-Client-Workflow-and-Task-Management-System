@@ -38,5 +38,15 @@ CREATE TABLE IF NOT EXISTS milestones (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS project_activity (
+  id SERIAL PRIMARY KEY,
+  project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+  changed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  action VARCHAR(30) NOT NULL CHECK (action IN ('Created', 'Updated')),
+  details TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects(client_id);
 CREATE INDEX IF NOT EXISTS idx_milestones_project_id ON milestones(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_activity_project_id ON project_activity(project_id);
