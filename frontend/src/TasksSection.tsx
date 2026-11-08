@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listTasksRequest } from './api';
 import { useAuth } from './auth';
+import TaskCard from './TaskCard';
 import { Task } from './types';
 
 export default function TasksSection() {
@@ -40,13 +41,9 @@ export default function TasksSection() {
       ) : (
         <div className="project-list">
           {tasks.map((task) => (
-            <article className="project-card" key={task.id}>
-              <h3>{task.title}</h3>
-              <p><strong>Status:</strong> {task.status}</p>
-              <p><strong>Due:</strong> {task.dueDate
-                ? <time dateTime={task.dueDate}>{task.dueDate}</time>
-                : 'No due date'}</p>
-            </article>
+            <TaskCard key={task.id} task={task} onSaved={(updated) => {
+              setTasks((current) => current.map((item) => item.id === updated.id ? updated : item));
+            }} />
           ))}
         </div>
       )}
