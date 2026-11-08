@@ -1,4 +1,4 @@
-import { AuthSession, AuthUser, ClientSummary, Project, ProjectInput, Task } from './types';
+import { AuthSession, AuthUser, ClientSummary, Project, ProjectInput, Task, TaskUpdateInput } from './types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
@@ -61,6 +61,14 @@ export async function listProjectsRequest(token: string): Promise<Project[]> {
 export async function listTasksRequest(token: string): Promise<Task[]> {
   const body = await authorizedRequest<{ tasks: Task[] }>('/tasks', token);
   return body.tasks;
+}
+
+export async function updateTaskRequest(token: string, id: number, input: TaskUpdateInput): Promise<Task> {
+  const body = await authorizedRequest<{ task: Task }>(`/tasks/${id}`, token, {
+    method: 'PATCH',
+    body: JSON.stringify(input)
+  });
+  return body.task;
 }
 
 export async function listClientsRequest(token: string): Promise<ClientSummary[]> {
