@@ -5,9 +5,9 @@ import { parseTaskUpdateInput } from './taskValidation';
 
 export const taskRouter = Router();
 
-taskRouter.use(authenticateJWT, authorizeRoles('Team Member'));
+taskRouter.use(authenticateJWT);
 
-taskRouter.get('/', async (req: AuthenticatedRequest, res) => {
+taskRouter.get('/', authorizeRoles('Manager', 'Team Member'), async (req: AuthenticatedRequest, res) => {
   try {
     const tasks = await listTasksForUser(req.user!);
     res.json({ success: true, tasks });
@@ -17,7 +17,7 @@ taskRouter.get('/', async (req: AuthenticatedRequest, res) => {
   }
 });
 
-taskRouter.patch('/:id', async (req: AuthenticatedRequest, res) => {
+taskRouter.patch('/:id', authorizeRoles('Team Member'), async (req: AuthenticatedRequest, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id < 1 || id > 2147483647) {

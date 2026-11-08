@@ -2,7 +2,7 @@ import { pool } from './db';
 import { JWTPayload, Task, TaskUpdateInput } from './types';
 
 export async function listTasksForUser(user: JWTPayload): Promise<Task[]> {
-  if (user.role !== 'Team Member' || !process.env.DATABASE_URL) return [];
+  if ((user.role !== 'Team Member' && user.role !== 'Manager') || !process.env.DATABASE_URL) return [];
 
   const result = await pool.query<Task>(
     `SELECT id,
@@ -13,9 +13,9 @@ export async function listTasksForUser(user: JWTPayload): Promise<Task[]> {
             status,
             progress
      FROM tasks
-     WHERE assigned_to = $1
+     WHERE ($1::boolean OR assigned_to = $2)
      ORDER BY due_date ASC NULLS LAST, id`,
-    [user.id]
+    [user.role === 'Manager', user.id]
   );
   return result.rows;
 }

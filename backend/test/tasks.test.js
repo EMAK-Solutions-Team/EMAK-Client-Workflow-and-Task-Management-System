@@ -170,3 +170,29 @@ test('supplied ownership fields cannot redirect or reassign task updates', async
   assert.equal((await patchTask(2, token, { ...update, assignedTo: 2, id: 1 }, query)).status, 404);
   assert.deepEqual(await storedTasks(), expected);
 });
+
+test('Managers can read updated status and progress from both members', async () => {
+  assert.equal((await patchTask(1, tokenFor(2))).status, 200);
+  assert.equal((await patchTask(2, tokenFor(4), { status: 'Completed', progress: 100 })).status, 200);
+  const response = await fetch(`${baseUrl}/api/tasks`, {
+    headers: { Authorization: `Bearer ${tokenFor(1, 'Manager')}` }
+  });
+  assert.equal(response.status, 200);
+  const { tasks } = await response.json();
+  assert.deepEqual(tasks.map(({ id, status, progress }) => ({ id, status, progress })), [
+    { id: 1, status: 'In Progress', progress: 45 },
+    { id: 2, status: 'Completed', progress: 100 }
+  ]);
+});
+
+test('task lists reject missing or invalid tokens and Client access', async () => {
+  for (const [token, expected] of [
+    [undefined, 401], ['invalid-token', 401], [tokenFor(3, 'Client'), 403]
+  ]) {
+    const response = await fetch(`${baseUrl}/api/tasks`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    assert.equal(response.status, expected);
+    assert.equal((await response.json()).success, false);
+  }
+});
