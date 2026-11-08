@@ -48,12 +48,20 @@ The frontend runs at `http://localhost:5173`.
 
 ## Verification
 
+The US-04 task tests require PGlite, which teammates must install locally because it is not included in the committed dependency files. From the repository root, run:
+
 ```bash
 cd backend
+npm ci
+npm install --no-save --package-lock=false @electric-sql/pglite@0.5.15
 npm test
 ```
 
-The test suite builds the backend and verifies authentication, role authorization, logout, project validation, Manager CRUD operations, and read-only project access.
+The PGlite install command does not change `package.json` or `package-lock.json`. Repeat it after running `npm ci`, which removes dependencies not listed in those files.
+
+Task tests use an isolated in-memory PostgreSQL database and do not require a running PostgreSQL server.
+
+The test suite builds the backend and verifies authentication, role authorization, logout, project validation, Manager CRUD operations, read-only project access, assigned-task isolation, status/progress updates, and read-only Manager task visibility.
 
 ## Main API routes
 
