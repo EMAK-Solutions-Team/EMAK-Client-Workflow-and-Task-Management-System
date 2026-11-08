@@ -88,7 +88,7 @@ function DashboardPage({ role }: { role: UserRole }) {
         <h1>{role} Dashboard</h1>
         <p>Signed in as {user?.name}.</p>
         <button type="button" onClick={handleLogout}>Logout</button>
-        {role === 'Team Member' && <TasksSection key={token} />}
+        {(role === 'Manager' || role === 'Team Member') && <TasksSection key={token} />}
         <ProjectsSection />
       </section>
     </main>
