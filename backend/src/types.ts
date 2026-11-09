@@ -71,3 +71,31 @@ export interface ClientSummary {
   name: string;
   email: string;
 }
+
+export interface TeamMemberSummary {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
+export type TaskStatus = 'To Do' | 'In Progress' | 'Review' | 'Completed';
+
+export interface TaskInput {
+  projectId: number;
+  assignedTo: number;
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  dueDate: string | null;
+}
+
+export interface Task extends TaskInput {
+  id: number;
+  assignedToName?: string;
+  projectName?: string;
+  status: TaskStatus;
+  createdBy: number | null;
+  createdAt: string;
+  updatedAt: string;
+}

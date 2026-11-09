@@ -9,6 +9,7 @@ import {
   listProjectsForUser,
   updateProject
 } from './projectRepository';
+import { listTasksByProject } from './taskRepository';
 import { MilestoneInput, ProjectInput, ProjectStatus } from './types';
 
 export const projectRouter = Router();
@@ -91,6 +92,22 @@ projectRouter.get('/:id/activity', authorizeRoles('Manager'), async (req: Authen
 
     const activity = await listProjectActivity(projectId);
     res.json({ success: true, activity });
+  } catch (error) {
+    serverError(res, error);
+  }
+});
+
+projectRouter.get('/:id/tasks', authorizeRoles('Manager', 'Team Member'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const projectId = Number(req.params.id);
+    const project = await getProjectForUser(projectId, req.user!);
+    if (!project) {
+      res.status(404).json({ success: false, error: 'Project not found.' });
+      return;
+    }
+
+    const tasks = await listTasksByProject(projectId);
+    res.json({ success: true, tasks });
   } catch (error) {
     serverError(res, error);
   }

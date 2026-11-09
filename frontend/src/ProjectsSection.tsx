@@ -4,10 +4,19 @@ import {
   deleteProjectRequest,
   listClientsRequest,
   listProjectsRequest,
-  updateProjectRequest
+  updateProjectRequest,
+  createTaskRequest,
+  listTeamMembersRequest,
+  listProjectTasksRequest
 } from './api';
 import { useAuth } from './auth';
 import { ClientSummary, MilestoneInput, Project, ProjectInput, ProjectStatus } from './types';
+import { TaskForm } from './TaskForm';
+import type {
+  Task,
+  TaskInput,
+  TeamMemberSummary
+} from './types';
 
 const emptyForm: ProjectInput = {
   name: '',
@@ -28,6 +37,9 @@ export default function ProjectsSection() {
   const [milestoneDate, setMilestoneDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [teamMembers, setTeamMembers] = useState<TeamMemberSummary[]>([]);
+const [projectTasks, setProjectTasks] = useState<Record<number, Task[]>>({});
+const [taskError, setTaskError] = useState('');
 
   async function loadProjects() {
     if (!token) return;
@@ -109,6 +121,55 @@ export default function ProjectsSection() {
       setError(reason instanceof Error ? reason.message : 'Unable to delete the project.');
     }
   }
+
+  
+async function loadTaskData() {
+  if (!token || user?.role !== 'Manager') return;
+
+  try {
+    setTaskError('');
+
+    const members = await listTeamMembersRequest(token);
+    setTeamMembers(members);
+
+    const results = await Promise.all(
+      projects.map(async (project) => ({
+        projectId: project.id,
+        tasks: await listProjectTasksRequest(token, project.id)
+      }))
+    );
+
+    const groupedTasks: Record<number, Task[]> = {};
+
+    results.forEach(({ projectId, tasks }) => {
+      groupedTasks[projectId] = tasks;
+    });
+
+    setProjectTasks(groupedTasks);
+  } catch (reason) {
+    setTaskError(
+      reason instanceof Error
+        ? reason.message
+        : 'Unable to load task information.'
+    );
+  }
+}
+
+useEffect(() => {
+  if (user?.role === 'Manager' && token) {
+    void loadTaskData();
+  }
+}, [projects, token, user?.role]);
+
+async function handleTaskCreated(input: TaskInput) {
+  if (!token) {
+    throw new Error('You must be logged in.');
+  }
+
+  await createTaskRequest(token, input);
+  await loadTaskData();
+}
+
 
   return (
     <section className="projects">
@@ -212,6 +273,24 @@ export default function ProjectsSection() {
         </form>
       )}
 
+      
+
+      {user?.role === 'Manager' && (
+        <div className="manager-tasks">
+          <h2>Task Management</h2>
+
+          {taskError && (
+            <p className="error">{taskError}</p>
+          )}
+
+          <TaskForm
+            projects={projects}
+            teamMembers={teamMembers}
+            onTaskCreated={handleTaskCreated}
+          />
+        </div>
+      )}
+
       {loading ? (
         <p>Loading projects...</p>
       ) : projects.length === 0 ? (
@@ -221,23 +300,98 @@ export default function ProjectsSection() {
           {projects.map((project) => (
             <article className="project-card" key={project.id}>
               <h3>{project.name}</h3>
-              <p><strong>Client:</strong> {project.clientName}</p>
-              <p><strong>Dates:</strong> {project.startDate} to {project.targetCompletionDate}</p>
-              <p><strong>Status:</strong> {project.status}</p>
+
+              <p>
+                <strong>Client:</strong> {project.clientName}
+              </p>
+
+              <p>
+                <strong>Dates:</strong> {project.startDate} to{' '}
+                {project.targetCompletionDate}
+              </p>
+
+              <p>
+                <strong>Status:</strong> {project.status}
+              </p>
+
               <h4>Milestones</h4>
+
               {project.milestones.length ? (
                 <ul>
                   {project.milestones.map((milestone) => (
                     <li key={milestone.id}>
-                      {milestone.title}{milestone.dueDate ? ` - ${milestone.dueDate}` : ''}
+                      {milestone.title}
+                      {milestone.dueDate
+                        ? ` - ${milestone.dueDate}`
+                        : ''}
                     </li>
                   ))}
                 </ul>
-              ) : <p>None</p>}
+              ) : (
+                <p>None</p>
+              )}
+
+              {user?.role === 'Manager' && (
+                <div className="project-tasks">
+                  <h4>Assigned Tasks</h4>
+
+                  {!projectTasks[project.id] ? (
+                    <p>Loading tasks...</p>
+                  ) : projectTasks[project.id].length === 0 ? (
+                    <p>No tasks assigned yet.</p>
+                  ) : (
+                    <ul>
+                      {projectTasks[project.id].map((task) => (
+                        <li key={task.id}>
+                          <strong>{task.title}</strong>
+
+                          <p>
+                            <strong>Assigned to:</strong>{' '}
+                            {task.assignedToName ||
+                              `Member #${task.assignedTo}`}
+                          </p>
+
+                          <p>
+                            <strong>Description:</strong>{' '}
+                            {task.description || 'No description'}
+                          </p>
+
+                          <p>
+                            <strong>Priority:</strong>{' '}
+                            {task.priority}
+                          </p>
+
+                          <p>
+                            <strong>Due date:</strong>{' '}
+                            {task.dueDate}
+                          </p>
+
+                          <p>
+                            <strong>Status:</strong>{' '}
+                            {task.status}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
               {user?.role === 'Manager' && (
                 <div className="actions">
-                  <button type="button" onClick={() => editProject(project)}>Edit</button>
-                  <button type="button" onClick={() => removeProject(project.id)}>Delete</button>
+                  <button
+                    type="button"
+                    onClick={() => editProject(project)}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => removeProject(project.id)}
+                  >
+                    Delete
+                  </button>
                 </div>
               )}
             </article>

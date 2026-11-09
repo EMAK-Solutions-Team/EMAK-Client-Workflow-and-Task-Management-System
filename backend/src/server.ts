@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { authRouter } from './authRoutes';
 import { projectRouter } from './projectRoutes';
+import { taskRouter, userRouter } from './taskRoutes';
 
 dotenv.config();
 
@@ -14,6 +15,8 @@ app.use(express.json());
 
 app.use('/api/auth', authRouter);
 app.use('/api/projects', projectRouter);
+app.use('/api/tasks', taskRouter);
+app.use('/api/users', userRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' });

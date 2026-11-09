@@ -47,6 +47,24 @@ CREATE TABLE IF NOT EXISTS project_activity (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS tasks (
+  id SERIAL PRIMARY KEY,
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  assigned_to INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  title VARCHAR(150) NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  priority VARCHAR(20) NOT NULL DEFAULT 'Medium'
+    CHECK (priority IN ('Low', 'Medium', 'High', 'Urgent')),
+  due_date DATE,
+  status VARCHAR(20) NOT NULL DEFAULT 'To Do'
+    CHECK (status IN ('To Do', 'In Progress', 'Review', 'Completed')),
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects(client_id);
 CREATE INDEX IF NOT EXISTS idx_milestones_project_id ON milestones(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_activity_project_id ON project_activity(project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON tasks(assigned_to);
