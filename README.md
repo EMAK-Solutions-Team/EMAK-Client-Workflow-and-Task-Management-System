@@ -48,16 +48,13 @@ The frontend runs at `http://localhost:5173`.
 
 ## Verification
 
-The US-04 task tests require PGlite, which teammates must install locally because it is not included in the committed dependency files. From the repository root, run:
+PGlite is included as a backend development dependency so the PostgreSQL task tests run without a live test database. From the repository root, run:
 
 ```bash
 cd backend
 npm ci
-npm install --no-save --package-lock=false @electric-sql/pglite@0.5.15
 npm test
 ```
-
-The PGlite install command does not change `package.json` or `package-lock.json`. Repeat it after running `npm ci`, which removes dependencies not listed in those files.
 
 Task tests use an isolated in-memory PostgreSQL database and do not require a running PostgreSQL server.
 
