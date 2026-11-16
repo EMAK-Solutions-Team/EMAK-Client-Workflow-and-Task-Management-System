@@ -6,8 +6,8 @@ export function parseTaskUpdateInput(body: unknown): TaskUpdateInput | string {
   }
 
   const { status, progress } = body as Record<string, unknown>;
-  if (status !== 'Pending' && status !== 'In Progress' && status !== 'Completed') {
-    return 'Status must be Pending, In Progress, or Completed.';
+  if (status !== 'Pending' && status !== 'To Do' && status !== 'In Progress' && status !== 'Review' && status !== 'Completed') {
+    return 'Status must be Pending, To Do, In Progress, Review, or Completed.';
   }
   if (typeof progress !== 'number' || !Number.isInteger(progress) || progress < 0 || progress > 100) {
     return 'Progress must be a whole number between 0 and 100.';

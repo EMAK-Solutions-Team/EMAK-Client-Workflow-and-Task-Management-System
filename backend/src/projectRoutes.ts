@@ -9,14 +9,12 @@ import {
   listProjectsForUser,
   updateProject
 } from './projectRepository';
+import { listTasksByProject } from './taskRepository';
 import { MilestoneInput, ProjectInput, ProjectStatus } from './types';
+import { validCalendarDate } from './dateValidation';
 
 export const projectRouter = Router();
 const statuses: ProjectStatus[] = ['Planning', 'Active', 'On Hold', 'Completed'];
-
-function validDate(value: unknown): value is string {
-  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
-}
 
 function parseProjectInput(body: Record<string, unknown>): ProjectInput | string {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
@@ -26,8 +24,9 @@ function parseProjectInput(body: Record<string, unknown>): ProjectInput | string
   const status = body.status;
 
   if (!name) return 'Project name is required.';
+  if (Array.from(name).length > 150) return 'Project name must be 150 characters or fewer.';
   if (!Number.isInteger(clientId) || clientId <= 0) return 'A valid client is required.';
-  if (!validDate(startDate) || !validDate(targetCompletionDate)) return 'Valid start and completion dates are required.';
+  if (!validCalendarDate(startDate) || !validCalendarDate(targetCompletionDate)) return 'Valid start and completion dates are required.';
   if (targetCompletionDate < startDate) return 'Target completion must be on or after the start date.';
   if (typeof status !== 'string' || !statuses.includes(status as ProjectStatus)) return 'A valid project status is required.';
 
@@ -43,7 +42,8 @@ function parseProjectInput(body: Record<string, unknown>): ProjectInput | string
       ? null
       : item.dueDate;
     if (!title) return 'Each milestone must include a title.';
-    if (dueDate !== null && !validDate(dueDate)) return 'Milestone due dates must be valid dates.';
+    if (Array.from(title).length > 150) return 'Milestone titles must be 150 characters or fewer.';
+    if (dueDate !== null && !validCalendarDate(dueDate)) return 'Milestone due dates must be valid dates.';
     milestones.push({ title, dueDate });
   }
 
@@ -91,6 +91,22 @@ projectRouter.get('/:id/activity', authorizeRoles('Manager'), async (req: Authen
 
     const activity = await listProjectActivity(projectId);
     res.json({ success: true, activity });
+  } catch (error) {
+    serverError(res, error);
+  }
+});
+
+projectRouter.get('/:id/tasks', authorizeRoles('Manager', 'Team Member'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const projectId = Number(req.params.id);
+    const project = await getProjectForUser(projectId, req.user!);
+    if (!project) {
+      res.status(404).json({ success: false, error: 'Project not found.' });
+      return;
+    }
+
+    const tasks = await listTasksByProject(projectId, req.user!);
+    res.json({ success: true, tasks });
   } catch (error) {
     serverError(res, error);
   }

@@ -52,16 +52,35 @@ CREATE TABLE IF NOT EXISTS tasks (
   project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   assigned_to INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   title VARCHAR(150) NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  priority VARCHAR(20) NOT NULL DEFAULT 'Medium'
+    CHECK (priority IN ('Low', 'Medium', 'High', 'Urgent')),
   due_date DATE,
   status VARCHAR(20) NOT NULL DEFAULT 'Pending'
-    CHECK (status IN ('Pending', 'In Progress', 'Completed'))
+    CHECK (status IN ('Pending', 'To Do', 'In Progress', 'Review', 'Completed')),
+  progress INTEGER NOT NULL DEFAULT 0
+    CHECK (progress BETWEEN 0 AND 100),
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- CREATE TABLE IF NOT EXISTS does not upgrade an existing tasks table.
 ALTER TABLE tasks
+  ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS priority VARCHAR(20) NOT NULL DEFAULT 'Medium'
+    CHECK (priority IN ('Low', 'Medium', 'High', 'Urgent')),
   ADD COLUMN IF NOT EXISTS progress INTEGER NOT NULL DEFAULT 0
-    CHECK (progress BETWEEN 0 AND 100);
+    CHECK (progress BETWEEN 0 AND 100),
+  ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  DROP CONSTRAINT IF EXISTS tasks_status_check,
+  ADD CONSTRAINT tasks_status_check
+    CHECK (status IN ('Pending', 'To Do', 'In Progress', 'Review', 'Completed'));
 
 CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects(client_id);
 CREATE INDEX IF NOT EXISTS idx_milestones_project_id ON milestones(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_activity_project_id ON project_activity(project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON tasks(assigned_to);

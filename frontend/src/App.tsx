@@ -76,6 +76,7 @@ function LoginPage() {
 function DashboardPage({ role }: { role: UserRole }) {
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
+  const [taskRefreshVersion, setTaskRefreshVersion] = useState(0);
 
   async function handleLogout() {
     await logout();
@@ -88,8 +89,10 @@ function DashboardPage({ role }: { role: UserRole }) {
         <h1>{role} Dashboard</h1>
         <p>Signed in as {user?.name}.</p>
         <button type="button" onClick={handleLogout}>Logout</button>
-        {(role === 'Manager' || role === 'Team Member') && <TasksSection key={token} />}
-        <ProjectsSection />
+        {(role === 'Manager' || role === 'Team Member') && (
+          <TasksSection key={token} refreshVersion={taskRefreshVersion} />
+        )}
+        <ProjectsSection onTasksChanged={() => setTaskRefreshVersion((version) => version + 1)} />
       </section>
     </main>
   );

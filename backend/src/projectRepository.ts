@@ -1,4 +1,5 @@
 import { pool } from './db';
+import { deleteMemoryTasksForProject, renameMemoryTaskProject } from './taskRepository';
 import { JWTPayload, Milestone, Project, ProjectActivity, ProjectInput } from './types';
 
 let nextProjectId = 1;
@@ -176,6 +177,7 @@ export async function updateProject(id: number, input: ProjectInput, changedBy: 
       }))
     };
     memoryProjects[index] = updated;
+    renameMemoryTaskProject(id, updated.name);
     addMemoryActivity(id, changedBy, 'Updated', 'Project details and milestones were updated.');
     return copyProject(updated);
   }
@@ -254,7 +256,9 @@ export async function deleteProject(id: number): Promise<boolean> {
   if (!process.env.DATABASE_URL) {
     const originalLength = memoryProjects.length;
     memoryProjects = memoryProjects.filter((project) => project.id !== id);
-    return memoryProjects.length !== originalLength;
+    if (memoryProjects.length === originalLength) return false;
+    deleteMemoryTasksForProject(id);
+    return true;
   }
 
   const result = await pool.query('DELETE FROM projects WHERE id = $1', [id]);

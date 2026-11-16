@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
-import { ClientSummary, UserRecord } from './types';
+import { ClientSummary, TeamMemberSummary, UserRecord } from './types';
 
 dotenv.config();
 
@@ -66,5 +66,21 @@ export async function listClientUsers(): Promise<ClientSummary[]> {
 
   return SEED_USERS
     .filter((user) => user.role === 'Client')
+    .map(({ id, name, email }) => ({ id, name, email }));
+}
+
+export async function listTeamMemberUsers(): Promise<TeamMemberSummary[]> {
+  if (process.env.DATABASE_URL) {
+    const result = await pool.query<TeamMemberSummary>(
+      `SELECT id, name, email
+       FROM users
+       WHERE role = 'Team Member'
+       ORDER BY name`
+    );
+    return result.rows;
+  }
+
+  return SEED_USERS
+    .filter((user) => user.role === 'Team Member')
     .map(({ id, name, email }) => ({ id, name, email }));
 }

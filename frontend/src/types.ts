@@ -1,5 +1,37 @@
 export type UserRole = 'Manager' | 'Team Member' | 'Client';
 
+export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
+
+export type TaskStatus = 'Pending' | 'To Do' | 'In Progress' | 'Review' | 'Completed';
+
+export interface TaskInput {
+  projectId: number;
+  assignedTo: number;
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  dueDate: string | null;
+}
+
+export interface Task extends TaskInput {
+  id: number;
+  status: TaskStatus;
+  progress: number;
+  progressPercentage: number;
+  assignedToName?: string;
+  projectName?: string;
+  createdBy: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeamMemberSummary {
+  id: number;
+  name: string;
+  email: string;
+}
+
+
 export interface AuthUser {
   id: number;
   name: string;
@@ -46,16 +78,6 @@ export interface ClientSummary {
   id: number;
   name: string;
   email: string;
-}
-
-export interface Task {
-  id: number;
-  projectId: number;
-  assignedTo: number;
-  title: string;
-  dueDate: string | null;
-  status: 'Pending' | 'In Progress' | 'Completed';
-  progress: number;
 }
 
 export type TaskUpdateInput = Pick<Task, 'status' | 'progress'>;

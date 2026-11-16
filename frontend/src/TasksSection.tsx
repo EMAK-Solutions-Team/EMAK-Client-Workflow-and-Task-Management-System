@@ -4,7 +4,7 @@ import { useAuth } from './auth';
 import TaskCard from './TaskCard';
 import { Task } from './types';
 
-export default function TasksSection() {
+export default function TasksSection({ refreshVersion = 0 }: { refreshVersion?: number }) {
   const { token, user } = useAuth();
   const isManager = user?.role === 'Manager';
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -28,7 +28,7 @@ export default function TasksSection() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [token]);
+  }, [token, refreshVersion]);
 
   return (
     <section className="projects" aria-labelledby="assigned-tasks-heading">

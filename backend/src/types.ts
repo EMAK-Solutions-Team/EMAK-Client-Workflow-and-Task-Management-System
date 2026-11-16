@@ -72,14 +72,37 @@ export interface ClientSummary {
   email: string;
 }
 
-export interface Task {
+export interface TeamMemberSummary {
   id: number;
+  name: string;
+  email: string;
+}
+
+export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
+export type TaskStatus = 'Pending' | 'To Do' | 'In Progress' | 'Review' | 'Completed';
+
+export interface TaskInput {
   projectId: number;
   assignedTo: number;
   title: string;
+  description: string;
+  priority: TaskPriority;
   dueDate: string | null;
-  status: 'Pending' | 'In Progress' | 'Completed';
-  progress: number;
 }
 
-export type TaskUpdateInput = Pick<Task, 'status' | 'progress'>;
+export interface Task extends TaskInput {
+  id: number;
+  assignedToName?: string;
+  projectName?: string;
+  status: TaskStatus;
+  progress: number;
+  progressPercentage: number;
+  createdBy: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskUpdateInput {
+  status: TaskStatus;
+  progress: number;
+}

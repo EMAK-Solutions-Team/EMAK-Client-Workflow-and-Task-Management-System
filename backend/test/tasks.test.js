@@ -35,7 +35,7 @@ before(async () => {
 });
 
 beforeEach(async () => {
-  await database.query("UPDATE tasks SET status = 'Pending', progress = 0");
+  await database.query("UPDATE tasks SET status = 'Pending', progress = 0, updated_at = '2026-01-01'");
 });
 
 after(async () => {
@@ -72,6 +72,35 @@ test('query parameters cannot request another member\'s tasks', async () => {
   assert.deepEqual(tasks.map((task) => task.id), [1]);
 });
 
+test('project task lists preserve member isolation and Manager visibility', async () => {
+  for (const [id, role, expected] of [
+    [2, 'Team Member', [1]],
+    [4, 'Team Member', [2]],
+    [1, 'Manager', [1, 2]]
+  ]) {
+    const response = await fetch(`${baseUrl}/api/projects/1/tasks?assignedTo=4`, {
+      headers: { Authorization: `Bearer ${tokenFor(id, role)}` }
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).tasks.map((task) => task.id), expected);
+  }
+});
+
+test('individual task reads cannot expose another member\'s task', async () => {
+  for (const [id, role, taskId, expected] of [
+    [2, 'Team Member', 1, 200],
+    [2, 'Team Member', 2, 404],
+    [4, 'Team Member', 1, 404],
+    [1, 'Manager', 2, 200],
+    [3, 'Client', 1, 403]
+  ]) {
+    const response = await fetch(`${baseUrl}/api/tasks/${taskId}`, {
+      headers: { Authorization: `Bearer ${tokenFor(id, role)}` }
+    });
+    assert.equal(response.status, expected);
+  }
+});
+
 const update = { status: 'In Progress', progress: 45 };
 
 async function patchTask(id, token, input = update, query = '') {
@@ -95,6 +124,8 @@ async function storedTasks() {
 test('members save status and progress changes that persist in their task lists', async () => {
   for (const [memberId, taskId, input] of [
     [2, 1, update],
+    [2, 1, { status: 'To Do', progress: 0 }],
+    [2, 1, { status: 'Review', progress: 90 }],
     [4, 2, { status: 'Completed', progress: 100 }],
     [2, 1, { status: 'Pending', progress: 0 }]
   ]) {
@@ -105,6 +136,7 @@ test('members save status and progress changes that persist in their task lists'
     assert.equal(saved.body.task.assignedTo, memberId);
     assert.equal(saved.body.task.status, input.status);
     assert.equal(saved.body.task.progress, input.progress);
+    assert.equal(saved.body.task.progressPercentage, input.progress);
     const tasks = await tasksFor(memberId);
     assert.deepEqual(tasks.map((task) => task.id), [taskId]);
     assert.equal(tasks[0].status, input.status);
@@ -165,8 +197,12 @@ test('supplied ownership fields cannot redirect or reassign task updates', async
   assert.equal(saved.body.task.id, 1);
   assert.equal(saved.body.task.assignedTo, 2);
   assert.equal(saved.body.task.projectId, 1);
-  const expected = initial.map((task) => task.id === 1 ? { ...task, ...update } : task);
-  assert.deepEqual(await storedTasks(), expected);
+  const actual = await storedTasks();
+  const changed = actual.find((task) => task.id === 1);
+  assert(new Date(changed.updated_at) > new Date(initial[0].updated_at));
+  const expected = initial.map((task) => task.id === 1
+    ? { ...task, ...update, updated_at: changed.updated_at } : task);
+  assert.deepEqual(actual, expected);
   assert.equal((await patchTask(2, token, { ...update, assignedTo: 2, id: 1 }, query)).status, 404);
   assert.deepEqual(await storedTasks(), expected);
 });

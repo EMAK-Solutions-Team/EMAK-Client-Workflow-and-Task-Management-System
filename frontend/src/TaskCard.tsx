@@ -61,7 +61,9 @@ export default function TaskCard({ task, onSaved }: { task: Task; onSaved: (task
               clearFeedback();
             }}>
               <option>Pending</option>
+              <option>To Do</option>
               <option>In Progress</option>
+              <option>Review</option>
               <option>Completed</option>
             </select>
           </label>
