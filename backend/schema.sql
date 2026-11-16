@@ -56,8 +56,10 @@ CREATE TABLE IF NOT EXISTS tasks (
   priority VARCHAR(20) NOT NULL DEFAULT 'Medium'
     CHECK (priority IN ('Low', 'Medium', 'High', 'Urgent')),
   due_date DATE,
-  status VARCHAR(20) NOT NULL DEFAULT 'To Do'
-    CHECK (status IN ('To Do', 'In Progress', 'Review', 'Completed')),
+  status VARCHAR(20) NOT NULL DEFAULT 'Pending'
+    CHECK (status IN ('Pending', 'To Do', 'In Progress', 'Review', 'Completed')),
+  progress INTEGER NOT NULL DEFAULT 0
+    CHECK (progress BETWEEN 0 AND 100),
   created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

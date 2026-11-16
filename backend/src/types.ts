@@ -79,7 +79,7 @@ export interface TeamMemberSummary {
 }
 
 export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
-export type TaskStatus = 'To Do' | 'In Progress' | 'Review' | 'Completed';
+export type TaskStatus = 'Pending' | 'To Do' | 'In Progress' | 'Review' | 'Completed';
 
 export interface TaskInput {
   projectId: number;
@@ -95,7 +95,14 @@ export interface Task extends TaskInput {
   assignedToName?: string;
   projectName?: string;
   status: TaskStatus;
+  progress: number;
+  progressPercentage: number;
   createdBy: number | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TaskUpdateInput {
+  status: TaskStatus;
+  progress: number;
 }
