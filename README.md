@@ -61,6 +61,8 @@ Task tests use an isolated in-memory PostgreSQL database and do not require a ru
 
 The test suite builds the backend and verifies authentication, role authorization, logout, project validation, Manager CRUD operations, read-only project access, assigned-task isolation, status/progress updates, read-only Manager task visibility, and project reports in both storage modes.
 
+Project-report tests cover Manager-only access, forged tokens, authorization before data reads, task aggregation and rounding, milestone/deadline/activity isolation, refreshed reports after task updates and moves, deleting the last task, deleted projects, and sanitized repository failures.
+
 ## Main API routes
 
 - `POST /api/auth/login`

@@ -36,6 +36,37 @@ test('completion percentage handles all completed, none completed and empty proj
   }
 });
 
+test('aggregation rounds completion and average progress independently without changing task order', () => {
+  const cases = [
+    {
+      states: [['Completed', 1], ['Pending', 0], ['Completed', 1]],
+      expected: {
+        totalTasks: 3, completedTasks: 2, completionPercentage: 66.67,
+        pendingTasks: 1, overdueTasks: 0, averageProgress: 0.67,
+        tasksByStatus: { Pending: 1, 'To Do': 0, 'In Progress': 0, Review: 0, Completed: 2 }
+      }
+    },
+    {
+      states: [['Review', 2], ['Completed', 1], ['In Progress', 1]],
+      expected: {
+        totalTasks: 3, completedTasks: 1, completionPercentage: 33.33,
+        pendingTasks: 2, overdueTasks: 0, averageProgress: 1.33,
+        tasksByStatus: { Pending: 0, 'To Do': 0, 'In Progress': 1, Review: 1, Completed: 1 }
+      }
+    }
+  ];
+  for (const { states, expected } of cases) {
+    const tasks = Object.freeze(states.map(([status, progress], index) => Object.freeze({
+      id: index + 1, title: `Rounding task ${index + 1}`, status, progress, dueDate: null
+    })));
+    for (const orderedTasks of [tasks, Object.freeze([...tasks].reverse())]) {
+      const report = buildProjectReport(project, orderedTasks, new Date('2026-11-18T17:00:00Z'));
+      assert.deepEqual(report.summary, expected);
+      assert.deepEqual(report.tasks.map(task => task.id), orderedTasks.map(task => task.id));
+    }
+  }
+});
+
 test('overdue and upcoming tasks change at Toronto midnight in both standard and daylight time', () => {
   const cases = [
     ['2026-11-18', '2026-11-19T04:59:59.999Z', 0],

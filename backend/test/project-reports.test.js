@@ -13,8 +13,10 @@ process.env.NODE_ENV = 'test';
 const { app } = require('../dist/server');
 const { pool } = require('../dist/db');
 const { generateToken } = require('../dist/authMiddleware');
-const { createProject, getProjectForUser, listProjectActivity, updateProject } = require('../dist/projectRepository');
-const { createTask, listTasksByProject, updateTaskForUser } = require('../dist/taskRepository');
+const projectRepository = require('../dist/projectRepository');
+const taskRepository = require('../dist/taskRepository');
+const { createProject, getProjectForUser, listProjectActivity, updateProject } = projectRepository;
+const { createTask, listTasksByProject, updateTaskForUser } = taskRepository;
 
 const userFor = (id, role = 'Team Member') => ({
   id, role, name: 'Report test user', email: `user${id}@example.test`
@@ -33,6 +35,14 @@ const projectInput = name => ({
     { title: 'Construction drawings', dueDate: null }
   ]
 });
+
+function trackReportReads(t) {
+  return [
+    t.mock.method(projectRepository, 'getProjectForUser'),
+    t.mock.method(taskRepository, 'listTasksByProject'),
+    t.mock.method(projectRepository, 'listProjectActivity')
+  ];
+}
 
 after(async () => {
   await pool.end();
@@ -103,11 +113,20 @@ for (const storage of ['memory', 'PostgreSQL']) {
       process.env.DATABASE_URL = '';
     });
 
-    async function reportFor(id, token = managerToken, query = '') {
+    async function reportFor(id, token = managerToken, query = '', headers = {}) {
       const response = await fetch(`${baseUrl}/api/projects/${id}/report${query}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...headers }
       });
       return { status: response.status, body: await response.json() };
+    }
+
+    async function mutate(path, method, token = managerToken, input) {
+      const response = await fetch(`${baseUrl}${path}`, {
+        method,
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        ...(input === undefined ? {} : { body: JSON.stringify(input) })
+      });
+      return { status: response.status, body: response.status === 204 ? null : await response.json() };
     }
 
     test('Managers receive project details, all assignees and rounded task summaries without writes', async () => {
@@ -189,10 +208,7 @@ for (const storage of ['memory', 'PostgreSQL']) {
       const activity = await listProjectActivity(retainedProject.id);
       assert.deepEqual(activity.map(item => item.action), ['Created']);
 
-      const deleted = await fetch(`${baseUrl}/api/tasks/${task.id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${managerToken}` }
-      });
+      const deleted = await mutate(`/api/tasks/${task.id}`, 'DELETE');
       assert.equal(deleted.status, 204);
 
       const result = await reportFor(retainedProject.id);
@@ -221,27 +237,40 @@ for (const storage of ['memory', 'PostgreSQL']) {
       });
     });
 
-    test('Team Members and Clients are denied before project validation or lookup', async () => {
+    test('Team Members and Clients cannot spoof Manager access or trigger report reads', async t => {
+      const reads = trackReportReads(t);
       for (const user of [userFor(2), userFor(3, 'Client')]) {
         for (const id of [project.id, 'abc', 2147483647]) {
-          const result = await reportFor(id, generateToken(user), '?role=Manager&userId=1');
+          const result = await reportFor(id, generateToken(user), '?role=Manager&userId=1', {
+            'X-User-Role': 'Manager', 'X-User-Id': '1'
+          });
           assert.equal(result.status, 403);
           assert.deepEqual(result.body, { success: false, error: 'Forbidden: Requires role Manager.' });
         }
       }
+      for (const read of reads) assert.equal(read.mock.callCount(), 0);
     });
 
-    test('missing, invalid and expired tokens are denied before project validation', async () => {
+    test('missing, invalid, expired and forged tokens cannot trigger report reads', async t => {
+      const reads = trackReportReads(t);
       const expiredToken = jwt.sign(managerUser, process.env.JWT_SECRET, { expiresIn: -1 });
-      for (const token of [null, 'invalid-token', expiredToken]) {
+      const memberToken = generateToken(userFor(2));
+      const tamperedParts = memberToken.split('.');
+      tamperedParts[1] = Buffer.from(JSON.stringify({ ...jwt.decode(memberToken), role: 'Manager' })).toString('base64url');
+      const tamperedToken = tamperedParts.join('.');
+      const wrongSecretToken = jwt.sign(managerUser, 'different-report-test-secret', { expiresIn: '1h' });
+      for (const token of [null, 'invalid-token', expiredToken, tamperedToken, wrongSecretToken]) {
         for (const id of [project.id, 'abc']) {
-          const result = await reportFor(id, token);
+          const result = await reportFor(id, token, '?role=Manager&userId=1', {
+            'X-User-Role': 'Manager', 'X-User-Id': '1'
+          });
           assert.equal(result.status, 401);
           assert.equal(result.body.success, false);
           assert.equal(typeof result.body.error, 'string');
           assert.equal(result.body.report, undefined);
         }
       }
+      for (const read of reads) assert.equal(read.mock.callCount(), 0);
     });
 
     test('invalid project IDs return 400 and missing projects return 404', async () => {
@@ -253,6 +282,95 @@ for (const storage of ['memory', 'PostgreSQL']) {
       const missing = await reportFor(2147483647);
       assert.equal(missing.status, 404);
       assert.deepEqual(missing.body, { success: false, error: 'Project not found.' });
+    });
+
+    test('repository failures return a sanitized error without a partial report', async t => {
+      for (const [repository, method] of [
+        [projectRepository, 'getProjectForUser'],
+        [taskRepository, 'listTasksByProject'],
+        [projectRepository, 'listProjectActivity']
+      ]) {
+        await t.test(`${method} failure`, async t => {
+          t.mock.method(repository, method, async () => {
+            throw new Error('Private repository diagnostics must not reach the response.');
+          });
+          const loggedError = t.mock.method(console, 'error', () => {});
+          const result = await reportFor(project.id);
+          assert.equal(result.status, 500);
+          assert.deepEqual(result.body, { success: false, error: 'Unable to complete the project request.' });
+          assert.equal(loggedError.mock.callCount(), 1);
+        });
+      }
+    });
+
+    test('deleted projects return 404 even while their audit entry is retained', async () => {
+      const removedProject = await createProject(projectInput('Deleted report project'), 1);
+      const [creation] = await listProjectActivity(removedProject.id);
+      assert.equal(creation.action, 'Created');
+      assert.equal((await mutate(`/api/projects/${removedProject.id}`, 'DELETE')).status, 204);
+
+      const retainedActivity = storage === 'PostgreSQL'
+        ? (await database.query('SELECT id FROM project_activity WHERE id = $1 AND project_id IS NULL', [creation.id])).rows
+        : await listProjectActivity(removedProject.id);
+      assert.deepEqual(retainedActivity.map(item => item.id), [creation.id]);
+      const result = await reportFor(removedProject.id);
+      assert.equal(result.status, 404);
+      assert.deepEqual(result.body, { success: false, error: 'Project not found.' });
+    });
+
+    test('reports refresh aggregation and deadlines after task completion, movement and reassignment', async () => {
+      const baseline = (await reportFor(project.id)).body;
+      const source = await createProject({ ...projectInput('Aggregation source'), milestones: [] }, 1);
+      const destination = await createProject({ ...projectInput('Aggregation destination'), milestones: [] }, 1);
+      const taskInput = (assignedTo, title) => ({
+        projectId: source.id, assignedTo, title, description: '', priority: 'Medium', dueDate: '2999-12-31'
+      });
+      const completed = await createTask(taskInput(2, 'Complete this task'), 1, 'Mehak Gill', source.name);
+      const movedInput = taskInput(4, 'Move this task');
+      const moved = await createTask(movedInput, 1, 'Second Member', source.name);
+      const progressed = await mutate(`/api/tasks/${completed.id}`, 'PATCH', generateToken(userFor(2)), {
+        status: 'Completed', progress: 100
+      });
+      assert.equal(progressed.status, 200);
+
+      const taskDeadlineIds = report => report.upcomingDeadlines.filter(item => item.type === 'Task').map(item => item.id);
+      const initial = await reportFor(source.id);
+      assert.equal(initial.status, 200);
+      assert.deepEqual(initial.body.report.summary, {
+        totalTasks: 2, completedTasks: 1, completionPercentage: 50, pendingTasks: 1,
+        overdueTasks: 0, averageProgress: 50,
+        tasksByStatus: { Pending: 1, 'To Do': 0, 'In Progress': 0, Review: 0, Completed: 1 }
+      });
+      assert.deepEqual(initial.body.report.tasks.map(item => item.id), [completed.id, moved.id]);
+      assert.deepEqual(taskDeadlineIds(initial.body.report), [moved.id]);
+
+      const reassigned = await mutate(`/api/tasks/${moved.id}`, 'PUT', managerToken, {
+        ...movedInput, projectId: destination.id, assignedTo: 2
+      });
+      assert.equal(reassigned.status, 200);
+      assert.equal(reassigned.body.task.assignedTo, 2);
+      assert.equal(reassigned.body.task.projectId, destination.id);
+
+      const refreshedSource = await reportFor(source.id);
+      assert.equal(refreshedSource.status, 200);
+      assert.deepEqual(refreshedSource.body.report.summary, {
+        totalTasks: 1, completedTasks: 1, completionPercentage: 100, pendingTasks: 0,
+        overdueTasks: 0, averageProgress: 100,
+        tasksByStatus: { Pending: 0, 'To Do': 0, 'In Progress': 0, Review: 0, Completed: 1 }
+      });
+      assert.deepEqual(refreshedSource.body.report.tasks.map(item => item.id), [completed.id]);
+      assert.deepEqual(taskDeadlineIds(refreshedSource.body.report), []);
+
+      const refreshedDestination = await reportFor(destination.id);
+      assert.equal(refreshedDestination.status, 200);
+      assert.deepEqual(refreshedDestination.body.report.summary, {
+        totalTasks: 1, completedTasks: 0, completionPercentage: 0, pendingTasks: 1,
+        overdueTasks: 0, averageProgress: 0,
+        tasksByStatus: { Pending: 1, 'To Do': 0, 'In Progress': 0, Review: 0, Completed: 0 }
+      });
+      assert.deepEqual(refreshedDestination.body.report.tasks.map(item => item.id), [moved.id]);
+      assert.deepEqual(taskDeadlineIds(refreshedDestination.body.report), [moved.id]);
+      assert.deepEqual((await reportFor(project.id)).body, baseline);
     });
   });
 }
