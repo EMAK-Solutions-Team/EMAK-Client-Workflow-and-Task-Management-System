@@ -10,6 +10,7 @@ import {
   updateProject
 } from './projectRepository';
 import { listTasksByProject } from './taskRepository';
+import { buildProjectReport } from './projectReport';
 import { MilestoneInput, ProjectInput, ProjectStatus } from './types';
 import { validCalendarDate } from './dateValidation';
 
@@ -91,6 +92,27 @@ projectRouter.get('/:id/activity', authorizeRoles('Manager'), async (req: Authen
 
     const activity = await listProjectActivity(projectId);
     res.json({ success: true, activity });
+  } catch (error) {
+    serverError(res, error);
+  }
+});
+
+projectRouter.get('/:id/report', authorizeRoles('Manager'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const projectId = Number(req.params.id);
+    if (!Number.isInteger(projectId) || projectId < 1 || projectId > 2147483647) {
+      res.status(400).json({ success: false, error: 'A valid project ID is required.' });
+      return;
+    }
+
+    const project = await getProjectForUser(projectId, req.user!);
+    if (!project) {
+      res.status(404).json({ success: false, error: 'Project not found.' });
+      return;
+    }
+
+    const tasks = await listTasksByProject(projectId, req.user!);
+    res.json({ success: true, report: buildProjectReport(project, tasks) });
   } catch (error) {
     serverError(res, error);
   }

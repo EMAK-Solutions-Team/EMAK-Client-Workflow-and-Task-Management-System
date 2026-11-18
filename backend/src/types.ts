@@ -106,3 +106,14 @@ export interface TaskUpdateInput {
   status: TaskStatus;
   progress: number;
 }
+
+export interface ProjectReport {
+  project: Project;
+  tasks: Task[];
+  summary: {
+    totalTasks: number;
+    completedTasks: number;
+    averageProgress: number;
+    tasksByStatus: Record<TaskStatus, number>;
+  };
+}
