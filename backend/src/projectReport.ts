@@ -1,6 +1,11 @@
-import { Project, ProjectReport, Task, TaskStatus } from './types';
+import { Project, ProjectActivity, ProjectDeadline, ProjectReport, Task, TaskStatus } from './types';
 
-export function buildProjectReport(project: Project, tasks: Task[], now = new Date()): ProjectReport {
+export function buildProjectReport(
+  project: Project,
+  tasks: Task[],
+  now = new Date(),
+  activity: ProjectActivity[] = []
+): ProjectReport {
   const dateParts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Toronto',
     year: 'numeric',
@@ -15,20 +20,39 @@ export function buildProjectReport(project: Project, tasks: Task[], now = new Da
     Review: 0,
     Completed: 0
   };
+  const upcomingDeadlines: ProjectDeadline[] = [];
   let totalProgress = 0;
   let overdueTasks = 0;
 
   for (const task of tasks) {
     tasksByStatus[task.status]++;
     totalProgress += task.progress;
-    if (task.status !== 'Completed' && task.dueDate !== null && task.dueDate < today) {
-      overdueTasks++;
+    if (task.status !== 'Completed' && task.dueDate !== null) {
+      if (task.dueDate < today) {
+        overdueTasks++;
+      } else {
+        upcomingDeadlines.push({ type: 'Task', id: task.id, title: task.title, dueDate: task.dueDate });
+      }
     }
   }
+
+  for (const milestone of project.milestones) {
+    if (milestone.status !== 'Completed' && milestone.dueDate !== null && milestone.dueDate >= today) {
+      upcomingDeadlines.push({ type: 'Milestone', id: milestone.id, title: milestone.title, dueDate: milestone.dueDate });
+    }
+  }
+
+  if (project.status !== 'Completed' && project.targetCompletionDate >= today) {
+    upcomingDeadlines.push({ type: 'Project', id: project.id, title: project.name, dueDate: project.targetCompletionDate });
+  }
+  upcomingDeadlines.sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.type.localeCompare(b.type) || a.id - b.id);
 
   return {
     project,
     tasks,
+    milestones: project.milestones,
+    upcomingDeadlines,
+    activity,
     summary: {
       totalTasks: tasks.length,
       completedTasks: tasksByStatus.Completed,

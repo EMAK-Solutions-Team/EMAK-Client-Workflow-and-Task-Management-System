@@ -111,8 +111,11 @@ projectRouter.get('/:id/report', authorizeRoles('Manager'), async (req: Authenti
       return;
     }
 
-    const tasks = await listTasksByProject(projectId, req.user!);
-    res.json({ success: true, report: buildProjectReport(project, tasks) });
+    const [tasks, activity] = await Promise.all([
+      listTasksByProject(projectId, req.user!),
+      listProjectActivity(projectId)
+    ]);
+    res.json({ success: true, report: buildProjectReport(project, tasks, new Date(), activity) });
   } catch (error) {
     serverError(res, error);
   }

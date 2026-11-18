@@ -107,9 +107,19 @@ export interface TaskUpdateInput {
   progress: number;
 }
 
+export interface ProjectDeadline {
+  type: 'Project' | 'Milestone' | 'Task';
+  id: number;
+  title: string;
+  dueDate: string;
+}
+
 export interface ProjectReport {
   project: Project;
   tasks: Task[];
+  milestones: Milestone[];
+  upcomingDeadlines: ProjectDeadline[];
+  activity: ProjectActivity[];
   summary: {
     totalTasks: number;
     completedTasks: number;

@@ -13,7 +13,7 @@ process.env.NODE_ENV = 'test';
 const { app } = require('../dist/server');
 const { pool } = require('../dist/db');
 const { generateToken } = require('../dist/authMiddleware');
-const { createProject, getProjectForUser, listProjectActivity } = require('../dist/projectRepository');
+const { createProject, getProjectForUser, listProjectActivity, updateProject } = require('../dist/projectRepository');
 const { createTask, listTasksByProject, updateTaskForUser } = require('../dist/taskRepository');
 
 const userFor = (id, role = 'Team Member') => ({
@@ -26,10 +26,10 @@ const projectInput = name => ({
   name,
   clientId: 3,
   startDate: '2026-11-01',
-  targetCompletionDate: '2026-12-31',
+  targetCompletionDate: '2999-12-31',
   status: 'Active',
   milestones: [
-    { title: 'Concept approval', dueDate: '2026-11-30' },
+    { title: 'Concept approval', dueDate: '2999-11-30' },
     { title: 'Construction drawings', dueDate: null }
   ]
 });
@@ -60,7 +60,8 @@ for (const storage of ['memory', 'PostgreSQL']) {
         mock.method(pool, 'connect', async () => ({ query: database.query.bind(database), release() {} }));
       }
 
-      project = await createProject(projectInput('Reported project'), 1);
+      project = await createProject(projectInput('Reported project draft'), 1);
+      project = await updateProject(project.id, projectInput('Reported project'), 1);
       emptyProject = await createProject({ ...projectInput('Empty project'), milestones: [] }, 1);
       const unrelatedProject = await createProject(projectInput('Unrelated project'), 1);
       tasks = [];
@@ -68,6 +69,7 @@ for (const storage of ['memory', 'PostgreSQL']) {
         ['Pending', 100], ['To Do', 0], ['In Progress', 25],
         ['Review', 90], ['Completed', 50], ['Completed', 100]
       ];
+      const taskDueDates = ['2000-01-01', '2999-12-31', '2000-01-01', null, '2000-01-01', '2999-12-31'];
       for (const [index, [status, progress]] of taskStates.entries()) {
         const assignedTo = index % 2 === 0 ? 2 : 4;
         const created = await createTask({
@@ -76,7 +78,7 @@ for (const storage of ['memory', 'PostgreSQL']) {
           title: `Report task ${index + 1}`,
           description: 'Report task details',
           priority: 'High',
-          dueDate: index % 2 === 0 ? '2000-01-01' : null
+          dueDate: taskDueDates[index]
         }, 1, assignedTo === 2 ? 'Mehak Gill' : 'Second Member', project.name);
         tasks.push(await updateTaskForUser(created.id, { status, progress }, userFor(assignedTo)));
       }
@@ -116,7 +118,15 @@ for (const storage of ['memory', 'PostgreSQL']) {
       assert.equal(result.status, 200);
       assert.equal(result.body.success, true);
       assert.deepEqual(result.body.report.project, project);
+      assert.deepEqual(result.body.report.milestones, project.milestones);
+      assert.deepEqual(result.body.report.activity, initialActivity);
+      assert.deepEqual(result.body.report.activity.map(item => item.action), ['Updated', 'Created']);
       assert.deepEqual(result.body.report.tasks.slice().sort((a, b) => a.id - b.id), tasks);
+      assert.deepEqual(result.body.report.upcomingDeadlines, [
+        { type: 'Milestone', id: project.milestones[0].id, title: 'Concept approval', dueDate: '2999-11-30' },
+        { type: 'Project', id: project.id, title: project.name, dueDate: '2999-12-31' },
+        { type: 'Task', id: tasks[1].id, title: tasks[1].title, dueDate: '2999-12-31' }
+      ]);
       assert.deepEqual(result.body.report.summary, {
         totalTasks: 6,
         completedTasks: 2,
@@ -140,7 +150,12 @@ for (const storage of ['memory', 'PostgreSQL']) {
         success: true,
         report: {
           project: emptyProject,
+          milestones: [],
+          activity: await listProjectActivity(emptyProject.id),
           tasks: [],
+          upcomingDeadlines: [
+            { type: 'Project', id: emptyProject.id, title: emptyProject.name, dueDate: '2999-12-31' }
+          ],
           summary: {
             totalTasks: 0,
             completedTasks: 0,

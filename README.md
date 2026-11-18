@@ -85,6 +85,9 @@ Managers can request `GET /api/projects/:id/report` with an `Authorization: Bear
   "report": {
     "project": {},
     "tasks": [],
+    "milestones": [],
+    "upcomingDeadlines": [],
+    "activity": [],
     "summary": {
       "totalTasks": 0,
       "completedTasks": 0,
@@ -104,7 +107,19 @@ Managers can request `GET /api/projects/:id/report` with an `Authorization: Bear
 }
 ```
 
-`project` contains the existing project details, including client, dates, status, and milestones. `tasks` contains all tasks belonging to that project, across all assignees. The summary includes:
+`project` contains the existing project details, including client, dates, status, and milestones. `tasks` contains all tasks belonging to that project, across all assignees. The report also includes:
+
+- `milestones`: all project milestones, including completed milestones and those without due dates. These remain available in `project.milestones` as well.
+- `upcomingDeadlines`: unfinished tasks, unfinished milestones, and the project's target completion date when the project is unfinished. Only dates on or after today in `America/Toronto` are included; items without a due date are excluded. All future dates are included, sorted by due date, then type, then ID. Each entry has `type` (`Project`, `Milestone`, or `Task`), `id`, `title`, and `dueDate`.
+- `activity`: this project's existing creation and update history, newest first, including actor names, details, and timestamps.
+
+For example, an upcoming deadline entry is:
+
+```json
+{ "type": "Milestone", "id": 1, "title": "Concept approval", "dueDate": "2026-11-30" }
+```
+
+The summary includes:
 
 - `totalTasks`: all tasks in the project.
 - `completedTasks`: tasks whose status is `Completed`.
@@ -115,6 +130,7 @@ Managers can request `GET /api/projects/:id/report` with an `Authorization: Bear
 - `tasksByStatus`: counts for each task status.
 
 Empty projects return zero counts, zero completion percentage, and zero average progress.
+Projects without tasks can still have milestones, a project completion deadline, and activity.
 
 Missing or invalid tokens return `401`; Team Members and Clients receive `403`. Invalid project IDs return `400` (IDs must be integers from 1 to 2147483647), and unknown projects return `404`.
 
