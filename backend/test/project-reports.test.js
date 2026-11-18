@@ -76,7 +76,7 @@ for (const storage of ['memory', 'PostgreSQL']) {
           title: `Report task ${index + 1}`,
           description: 'Report task details',
           priority: 'High',
-          dueDate: index % 2 === 0 ? '2026-12-01' : null
+          dueDate: index % 2 === 0 ? '2000-01-01' : null
         }, 1, assignedTo === 2 ? 'Mehak Gill' : 'Second Member', project.name);
         tasks.push(await updateTaskForUser(created.id, { status, progress }, userFor(assignedTo)));
       }
@@ -86,7 +86,7 @@ for (const storage of ['memory', 'PostgreSQL']) {
         title: 'Unrelated task',
         description: '',
         priority: 'Low',
-        dueDate: null
+        dueDate: '2000-01-01'
       }, 1, 'Mehak Gill', unrelatedProject.name);
 
       server = app.listen(0, '127.0.0.1');
@@ -120,6 +120,8 @@ for (const storage of ['memory', 'PostgreSQL']) {
       assert.deepEqual(result.body.report.summary, {
         totalTasks: 6,
         completedTasks: 2,
+        pendingTasks: 4,
+        overdueTasks: 2,
         averageProgress: 60.83,
         tasksByStatus: { Pending: 1, 'To Do': 1, 'In Progress': 1, Review: 1, Completed: 2 }
       });
@@ -141,6 +143,8 @@ for (const storage of ['memory', 'PostgreSQL']) {
           summary: {
             totalTasks: 0,
             completedTasks: 0,
+            pendingTasks: 0,
+            overdueTasks: 0,
             averageProgress: 0,
             tasksByStatus: Object.fromEntries(statuses.map(status => [status, 0]))
           }

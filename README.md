@@ -88,6 +88,8 @@ Managers can request `GET /api/projects/:id/report` with an `Authorization: Bear
     "summary": {
       "totalTasks": 0,
       "completedTasks": 0,
+      "pendingTasks": 0,
+      "overdueTasks": 0,
       "averageProgress": 0,
       "tasksByStatus": {
         "Pending": 0,
@@ -101,7 +103,16 @@ Managers can request `GET /api/projects/:id/report` with an `Authorization: Bear
 }
 ```
 
-`project` contains the existing project details, including client, dates, status, and milestones. `tasks` contains all tasks belonging to that project, across all assignees. `completedTasks` counts tasks whose status is `Completed`; `averageProgress` is the arithmetic mean of task progress percentages, rounded to two decimal places. Empty projects return zero counts and zero average progress.
+`project` contains the existing project details, including client, dates, status, and milestones. `tasks` contains all tasks belonging to that project, across all assignees. The summary includes:
+
+- `totalTasks`: all tasks in the project.
+- `completedTasks`: tasks whose status is `Completed`.
+- `pendingTasks`: all unfinished tasks (`Pending`, `To Do`, `In Progress`, or `Review`), regardless of progress percentage.
+- `overdueTasks`: unfinished tasks with a due date before today's date in `America/Toronto`. Tasks due today, tasks without a due date, and completed tasks are excluded. Overdue tasks are also included in `pendingTasks`.
+- `averageProgress`: the arithmetic mean of task progress percentages, rounded to two decimal places.
+- `tasksByStatus`: counts for each task status.
+
+Empty projects return zero counts and zero average progress.
 
 Missing or invalid tokens return `401`; Team Members and Clients receive `403`. Invalid project IDs return `400` (IDs must be integers from 1 to 2147483647), and unknown projects return `404`.
 
