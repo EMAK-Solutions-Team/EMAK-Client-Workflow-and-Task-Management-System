@@ -4,7 +4,7 @@ const { buildProjectReport } = require('../dist/projectReport');
 
 const project = { id: 1, name: 'Summary test project' };
 
-test('pending and overdue counts follow task status and dates independently of progress', () => {
+test('completion, pending and overdue summaries follow task status independently of progress', () => {
   const tasks = [
     { status: 'Pending', progress: 100, dueDate: '2026-11-17' },
     { status: 'In Progress', progress: 25, dueDate: '2026-11-17' },
@@ -17,8 +17,21 @@ test('pending and overdue counts follow task status and dates independently of p
   const { summary } = buildProjectReport(project, tasks, new Date('2026-11-18T17:00:00Z'));
   assert.equal(summary.totalTasks, 7);
   assert.equal(summary.completedTasks, 2);
+  assert.equal(summary.completionPercentage, 28.57);
   assert.equal(summary.pendingTasks, 5);
   assert.equal(summary.overdueTasks, 2);
+});
+
+test('completion percentage handles all completed, none completed and empty projects', () => {
+  const cases = [
+    [[{ status: 'Completed', progress: 0, dueDate: null }, { status: 'Completed', progress: 25, dueDate: null }], 100],
+    [[{ status: 'Pending', progress: 100, dueDate: null }, { status: 'Review', progress: 100, dueDate: null }], 0],
+    [[], 0]
+  ];
+  for (const [tasks, expected] of cases) {
+    const { summary } = buildProjectReport(project, tasks, new Date('2026-11-18T17:00:00Z'));
+    assert.equal(summary.completionPercentage, expected);
+  }
 });
 
 test('overdue tasks change at Toronto midnight in both standard and daylight time', () => {

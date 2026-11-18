@@ -113,6 +113,7 @@ export interface ProjectReport {
   summary: {
     totalTasks: number;
     completedTasks: number;
+    completionPercentage: number;
     pendingTasks: number;
     overdueTasks: number;
     averageProgress: number;

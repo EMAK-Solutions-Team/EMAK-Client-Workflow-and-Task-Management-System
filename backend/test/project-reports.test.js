@@ -120,6 +120,7 @@ for (const storage of ['memory', 'PostgreSQL']) {
       assert.deepEqual(result.body.report.summary, {
         totalTasks: 6,
         completedTasks: 2,
+        completionPercentage: 33.33,
         pendingTasks: 4,
         overdueTasks: 2,
         averageProgress: 60.83,
@@ -143,6 +144,7 @@ for (const storage of ['memory', 'PostgreSQL']) {
           summary: {
             totalTasks: 0,
             completedTasks: 0,
+            completionPercentage: 0,
             pendingTasks: 0,
             overdueTasks: 0,
             averageProgress: 0,

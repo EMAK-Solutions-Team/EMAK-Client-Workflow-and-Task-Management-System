@@ -32,6 +32,7 @@ export function buildProjectReport(project: Project, tasks: Task[], now = new Da
     summary: {
       totalTasks: tasks.length,
       completedTasks: tasksByStatus.Completed,
+      completionPercentage: tasks.length === 0 ? 0 : Math.round(tasksByStatus.Completed / tasks.length * 10000) / 100,
       pendingTasks: tasks.length - tasksByStatus.Completed,
       overdueTasks,
       averageProgress: tasks.length === 0 ? 0 : Math.round(totalProgress / tasks.length * 100) / 100,
