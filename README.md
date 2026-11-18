@@ -129,8 +129,7 @@ The summary includes:
 - `averageProgress`: the arithmetic mean of task progress percentages, rounded to two decimal places.
 - `tasksByStatus`: counts for each task status.
 
-Empty projects return zero counts, zero completion percentage, and zero average progress.
-Projects without tasks can still have milestones, a project completion deadline, and activity.
+Projects with no tasks return `200 OK` with `tasks: []`. All task counts, every `tasksByStatus` count, `completionPercentage`, and `averageProgress` are numeric `0`. Project details, milestones, upcoming milestone/project deadlines, and activity are still included. This also applies after the project's last task is deleted.
 
 Missing or invalid tokens return `401`; Team Members and Clients receive `403`. Invalid project IDs return `400` (IDs must be integers from 1 to 2147483647), and unknown projects return `404`.
 

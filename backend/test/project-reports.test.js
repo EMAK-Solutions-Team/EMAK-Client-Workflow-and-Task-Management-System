@@ -169,6 +169,58 @@ for (const storage of ['memory', 'PostgreSQL']) {
       });
     });
 
+    test('deleting the last task retains project details and returns a zero-task report', async () => {
+      const retainedProject = await createProject(projectInput('Project after last task deletion'), 1);
+      const task = await createTask({
+        projectId: retainedProject.id,
+        assignedTo: 2,
+        title: 'Last project task',
+        description: '',
+        priority: 'Medium',
+        dueDate: '2999-12-31'
+      }, 1, 'Mehak Gill', retainedProject.name);
+      const initial = await reportFor(retainedProject.id);
+      assert.equal(initial.status, 200);
+      assert.equal(initial.body.report.summary.totalTasks, 1);
+      assert.deepEqual(initial.body.report.tasks, [task]);
+      assert.deepEqual(initial.body.report.upcomingDeadlines.filter(item => item.type === 'Task'), [
+        { type: 'Task', id: task.id, title: task.title, dueDate: '2999-12-31' }
+      ]);
+      const activity = await listProjectActivity(retainedProject.id);
+      assert.deepEqual(activity.map(item => item.action), ['Created']);
+
+      const deleted = await fetch(`${baseUrl}/api/tasks/${task.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${managerToken}` }
+      });
+      assert.equal(deleted.status, 204);
+
+      const result = await reportFor(retainedProject.id);
+      assert.equal(result.status, 200);
+      assert.deepEqual(result.body, {
+        success: true,
+        report: {
+          project: retainedProject,
+          milestones: retainedProject.milestones,
+          activity,
+          tasks: [],
+          upcomingDeadlines: [
+            { type: 'Milestone', id: retainedProject.milestones[0].id, title: 'Concept approval', dueDate: '2999-11-30' },
+            { type: 'Project', id: retainedProject.id, title: retainedProject.name, dueDate: '2999-12-31' }
+          ],
+          summary: {
+            totalTasks: 0,
+            completedTasks: 0,
+            completionPercentage: 0,
+            pendingTasks: 0,
+            overdueTasks: 0,
+            averageProgress: 0,
+            tasksByStatus: Object.fromEntries(statuses.map(status => [status, 0]))
+          }
+        }
+      });
+    });
+
     test('Team Members and Clients are denied before project validation or lookup', async () => {
       for (const user of [userFor(2), userFor(3, 'Client')]) {
         for (const id of [project.id, 'abc', 2147483647]) {
