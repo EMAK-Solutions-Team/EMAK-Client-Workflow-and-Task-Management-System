@@ -12,6 +12,7 @@ A web-based project and task management platform designed for an architectural f
 - Manager project creation, editing, listing, and deletion
 - Project milestones, dates, clients, and status tracking
 - Read-only Team Member project access and client-filtered access
+- Persistent task comments for Managers and assigned Team Members
 - Manager-only project reports with milestones, tasks, and progress summaries
 - Automated authentication, authorization, and project tests
 
@@ -59,7 +60,7 @@ npm test
 
 Task tests use an isolated in-memory PostgreSQL database and do not require a running PostgreSQL server.
 
-The test suite builds the backend and verifies authentication, role authorization, logout, project validation, Manager CRUD operations, read-only project access, assigned-task isolation, status/progress updates, read-only Manager task visibility, and project reports in both storage modes.
+The test suite builds the backend and verifies authentication, role authorization, logout, project validation, Manager CRUD operations, read-only project access, assigned-task isolation, status/progress updates, task comments, read-only Manager task visibility, and project reports in both storage modes.
 
 Project-report tests cover Manager-only access, forged tokens, authorization before data reads, task aggregation and rounding, milestone/deadline/activity isolation, refreshed reports after task updates and moves, deleting the last task, deleted projects, and sanitized repository failures.
 
@@ -75,7 +76,19 @@ Project-report tests cover Manager-only access, forged tokens, authorization bef
 - `PUT /api/projects/:id` (Manager)
 - `DELETE /api/projects/:id` (Manager)
 - `GET /api/projects/clients` (Manager)
+- `GET /api/tasks/:id/comments` (Manager or assigned Team Member)
+- `POST /api/tasks/:id/comments` (Manager or assigned Team Member)
 - `GET /api/health`
+
+## Task comments
+
+Managers and the Team Member assigned to a task can list its comments with `GET /api/tasks/:id/comments`. They can add a comment by sending the following body to `POST /api/tasks/:id/comments`:
+
+```json
+{ "comment": "The revised design is ready for review." }
+```
+
+Each saved comment includes `id`, `taskId`, `authorId`, `authorName`, `comment`, and `createdAt`. Comments are required, trimmed, limited to 2,000 characters, and deleted automatically with their task. Clients receive `403`, while unrelated Team Members and unknown tasks receive `404`.
 
 ## Project report
 
@@ -138,7 +151,7 @@ Missing or invalid tokens return `401`; Team Members and Clients receive `403`. 
 ## Planned features
 
 - Task assignment and progress tracking
-- Comments and document links
+- Document links
 - Deadline notifications
 
 <sub>Team members: <span title="Emilio Conde Ludena">Emilio</span>, <span title="Mehak Gill">Mehak</span>, <span title="Arnav Chachra">Arnav</span>, <span title="Kasper Luboinski">Kasper</span></sub>

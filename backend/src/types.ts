@@ -107,6 +107,15 @@ export interface TaskUpdateInput {
   progress: number;
 }
 
+export interface TaskComment {
+  id: number;
+  taskId: number;
+  authorId: number;
+  authorName: string;
+  comment: string;
+  createdAt: string;
+}
+
 export interface ProjectDeadline {
   type: 'Project' | 'Milestone' | 'Task';
   id: number;
