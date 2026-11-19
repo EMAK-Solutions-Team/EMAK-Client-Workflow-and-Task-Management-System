@@ -1,10 +1,13 @@
 import { pool } from './db';
+import { deleteMemoryCommentsForTask, deleteMemoryCommentsForTasks } from './taskCommentRepository';
 import { JWTPayload, Task, TaskInput, TaskUpdateInput } from './types';
 
 let nextTaskId = 1;
 let memoryTasks: Task[] = [];
 
 export function deleteMemoryTasksForProject(projectId: number): void {
+  const taskIds = memoryTasks.filter((task) => task.projectId === projectId).map((task) => task.id);
+  deleteMemoryCommentsForTasks(taskIds);
   memoryTasks = memoryTasks.filter((task) => task.projectId !== projectId);
 }
 
@@ -146,7 +149,9 @@ export async function deleteTask(id: number): Promise<boolean> {
   if (!process.env.DATABASE_URL) {
     const len = memoryTasks.length;
     memoryTasks = memoryTasks.filter((t) => t.id !== id);
-    return memoryTasks.length !== len;
+    const deleted = memoryTasks.length !== len;
+    if (deleted) deleteMemoryCommentsForTask(id);
+    return deleted;
   }
   const res = await pool.query('DELETE FROM tasks WHERE id = $1', [id]);
   return (res.rowCount || 0) > 0;

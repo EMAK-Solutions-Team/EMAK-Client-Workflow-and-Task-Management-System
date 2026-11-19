@@ -79,8 +79,18 @@ ALTER TABLE tasks
   ADD CONSTRAINT tasks_status_check
     CHECK (status IN ('Pending', 'To Do', 'In Progress', 'Review', 'Completed'));
 
+CREATE TABLE IF NOT EXISTS task_comments (
+  id SERIAL PRIMARY KEY,
+  task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  comment_text TEXT NOT NULL
+    CHECK (char_length(btrim(comment_text)) BETWEEN 1 AND 2000),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects(client_id);
 CREATE INDEX IF NOT EXISTS idx_milestones_project_id ON milestones(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_activity_project_id ON project_activity(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON tasks(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_task_comments_task_id ON task_comments(task_id, created_at, id);

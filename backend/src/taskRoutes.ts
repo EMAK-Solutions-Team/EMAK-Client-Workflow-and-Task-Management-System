@@ -2,6 +2,7 @@ import { Response, Router } from 'express';
 import { authenticateJWT, AuthenticatedRequest, authorizeRoles } from './authMiddleware';
 import { listTeamMemberUsers } from './db';
 import { getProjectForUser } from './projectRepository';
+import { createTaskComment, listTaskComments } from './taskCommentRepository';
 import {
   createTask,
   deleteTask,
@@ -20,6 +21,26 @@ export const taskRouter = Router();
 export const userRouter = Router();
 
 const priorities: TaskPriority[] = ['Low', 'Medium', 'High', 'Urgent'];
+const MAX_COMMENT_LENGTH = 2000;
+
+function parseTaskId(value: unknown): number | null {
+  if (typeof value !== 'string') return null;
+  const id = Number(value);
+  return Number.isInteger(id) && id >= 1 && id <= 2147483647 ? id : null;
+}
+
+export function parseTaskCommentInput(body: unknown): { comment: string } | { error: string } {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { error: 'Comment payload must be an object.' };
+  }
+  const value = (body as Record<string, unknown>).comment;
+  if (typeof value !== 'string' || !value.trim()) return { error: 'Comment is required.' };
+  const comment = value.trim();
+  if (Array.from(comment).length > MAX_COMMENT_LENGTH) {
+    return { error: `Comment must be ${MAX_COMMENT_LENGTH} characters or fewer.` };
+  }
+  return { comment };
+}
 
 export function parseTaskInput(body: unknown): TaskInput | string {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return 'Task payload must be an object.';
@@ -62,6 +83,34 @@ taskRouter.get('/', authorizeRoles('Manager', 'Team Member'), async (req: Authen
   try {
     const tasks = await listTasksForUser(req.user!);
     res.json({ success: true, tasks });
+  } catch (error) {
+    serverError(res, error);
+  }
+});
+
+taskRouter.get('/:id/comments', authorizeRoles('Manager', 'Team Member'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const id = parseTaskId(req.params.id);
+    if (!id) return void res.status(400).json({ success: false, error: 'A valid task ID is required.' });
+    const task = await getTaskById(id, req.user!);
+    if (!task) return void res.status(404).json({ success: false, error: 'Task not found.' });
+    const comments = await listTaskComments(id);
+    res.json({ success: true, comments });
+  } catch (error) {
+    serverError(res, error);
+  }
+});
+
+taskRouter.post('/:id/comments', authorizeRoles('Manager', 'Team Member'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const id = parseTaskId(req.params.id);
+    if (!id) return void res.status(400).json({ success: false, error: 'A valid task ID is required.' });
+    const task = await getTaskById(id, req.user!);
+    if (!task) return void res.status(404).json({ success: false, error: 'Task not found.' });
+    const input = parseTaskCommentInput(req.body);
+    if ('error' in input) return void res.status(400).json({ success: false, error: input.error });
+    const comment = await createTaskComment(id, req.user!, input.comment);
+    res.status(201).json({ success: true, comment });
   } catch (error) {
     serverError(res, error);
   }
@@ -112,8 +161,8 @@ taskRouter.put('/:id', authorizeRoles('Manager'), async (req: AuthenticatedReque
 
 taskRouter.patch('/:id', authorizeRoles('Team Member'), async (req: AuthenticatedRequest, res) => {
   try {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id) || id < 1 || id > 2147483647) {
+    const id = parseTaskId(req.params.id);
+    if (!id) {
       return void res.status(400).json({ success: false, error: 'A valid task ID is required.' });
     }
     const input = parseTaskUpdateInput(req.body);
