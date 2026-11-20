@@ -81,3 +81,12 @@ export interface ClientSummary {
 }
 
 export type TaskUpdateInput = Pick<Task, 'status' | 'progress'>;
+
+export interface TaskComment {
+  id: number;
+  taskId: number;
+  authorId: number;
+  authorName: string;
+  comment: string;
+  createdAt: string;
+}
