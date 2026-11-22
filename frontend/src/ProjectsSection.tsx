@@ -94,6 +94,7 @@ const [taskError, setTaskError] = useState('');
         await createProjectRequest(token, form);
       }
       resetForm();
+      onTasksChanged?.();
       await loadProjects();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to save the project.');

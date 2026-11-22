@@ -81,3 +81,39 @@ export interface ClientSummary {
 }
 
 export type TaskUpdateInput = Pick<Task, 'status' | 'progress'>;
+
+export type ProjectActivityAction = 'Created' | 'Updated';
+
+export interface ProjectActivity {
+  id: number;
+  projectId: number | null;
+  changedBy: number | null;
+  changedByName: string | null;
+  action: ProjectActivityAction;
+  details: string;
+  createdAt: string;
+}
+
+export interface ProjectDeadline {
+  type: 'Project' | 'Milestone' | 'Task';
+  id: number;
+  title: string;
+  dueDate: string;
+}
+
+export interface ProjectReport {
+  project: Project;
+  tasks: Task[];
+  milestones: Milestone[];
+  upcomingDeadlines: ProjectDeadline[];
+  activity: ProjectActivity[];
+  summary: {
+    totalTasks: number;
+    completedTasks: number;
+    completionPercentage: number;
+    pendingTasks: number;
+    overdueTasks: number;
+    averageProgress: number;
+    tasksByStatus: Record<TaskStatus, number>;
+  };
+}

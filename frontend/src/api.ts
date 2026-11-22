@@ -4,6 +4,7 @@ import type {
   ClientSummary,
   Project,
   ProjectInput,
+  ProjectReport,
   Task,
   TaskInput,
   TaskUpdateInput,
@@ -165,4 +166,15 @@ export async function createTaskRequest(
   );
 
   return body.task;
+}
+
+export async function getProjectReportRequest(
+  token: string,
+  projectId: number
+): Promise<ProjectReport> {
+  const body = await authorizedRequest<{ report: ProjectReport }>(
+    `/projects/${projectId}/report`,
+    token
+  );
+  return body.report;
 }
