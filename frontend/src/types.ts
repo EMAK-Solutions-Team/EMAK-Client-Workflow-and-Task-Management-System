@@ -117,3 +117,12 @@ export interface ProjectReport {
     tasksByStatus: Record<TaskStatus, number>;
   };
 }
+
+export interface TaskComment {
+  id: number;
+  taskId: number;
+  authorId: number;
+  authorName: string;
+  comment: string;
+  createdAt: string;
+}

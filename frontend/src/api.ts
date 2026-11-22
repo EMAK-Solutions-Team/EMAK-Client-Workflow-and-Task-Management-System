@@ -8,7 +8,8 @@ import type {
   Task,
   TaskInput,
   TaskUpdateInput,
-  TeamMemberSummary
+  TeamMemberSummary,
+  TaskComment
 } from './types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
@@ -167,7 +168,6 @@ export async function createTaskRequest(
 
   return body.task;
 }
-
 export async function getProjectReportRequest(
   token: string,
   projectId: number
@@ -177,4 +177,33 @@ export async function getProjectReportRequest(
     token
   );
   return body.report;
+}
+
+export async function listTaskCommentsRequest(
+  token: string,
+  taskId: number
+): Promise<TaskComment[]> {
+  const body = await authorizedRequest<{ comments: TaskComment[] }>(
+    `/tasks/${taskId}/comments`,
+    token
+  );
+
+  return body.comments;
+}
+
+export async function createTaskCommentRequest(
+  token: string,
+  taskId: number,
+  comment: string
+): Promise<TaskComment> {
+  const body = await authorizedRequest<{ comment: TaskComment }>(
+    `/tasks/${taskId}/comments`,
+    token,
+    {
+      method: 'POST',
+      body: JSON.stringify({ comment })
+    }
+  );
+
+  return body.comment;
 }
