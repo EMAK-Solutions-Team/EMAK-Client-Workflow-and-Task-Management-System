@@ -1,6 +1,7 @@
 import { FormEvent, ReactNode, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { rolePath, useAuth } from './auth';
+import ProjectReportSection from './ProjectReportSection';
 import ProjectsSection from './ProjectsSection';
 import TasksSection from './TasksSection';
 import { UserRole } from './types';
@@ -93,6 +94,9 @@ function DashboardPage({ role }: { role: UserRole }) {
           <TasksSection key={token} refreshVersion={taskRefreshVersion} />
         )}
         <ProjectsSection onTasksChanged={() => setTaskRefreshVersion((version) => version + 1)} />
+        {role === 'Manager' && (
+          <ProjectReportSection key={token} refreshVersion={taskRefreshVersion} />
+        )}
       </section>
     </main>
   );

@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { updateTaskRequest } from './api';
 import { useAuth } from './auth';
 import { Task } from './types';
+import TaskComments from './TaskComments';
 
 export default function TaskCard({ task, onSaved }: { task: Task; onSaved: (task: Task) => void }) {
   const { token } = useAuth();
@@ -80,6 +81,7 @@ export default function TaskCard({ task, onSaved }: { task: Task; onSaved: (task
         {error && <p className="error" role="alert">{error}</p>}
         {saved && <p role="status">Saved.</p>}
       </form>
+      <TaskComments taskId={task.id} />
     </article>
   );
 }

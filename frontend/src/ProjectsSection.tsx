@@ -9,6 +9,7 @@ import {
   listTeamMembersRequest,
   listProjectTasksRequest
 } from './api';
+import TaskComments from './TaskComments';
 import { useAuth } from './auth';
 import { ClientSummary, MilestoneInput, Project, ProjectInput, ProjectStatus } from './types';
 import { TaskForm } from './TaskForm';
@@ -94,6 +95,7 @@ const [taskError, setTaskError] = useState('');
         await createProjectRequest(token, form);
       }
       resetForm();
+      onTasksChanged?.();
       await loadProjects();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Unable to save the project.');
@@ -346,6 +348,7 @@ async function handleTaskCreated(input: TaskInput) {
                       {projectTasks[project.id].map((task) => (
                         <li key={task.id}>
                           <strong>{task.title}</strong>
+                          
 
                           <p>
                             <strong>Assigned to:</strong>{' '}
@@ -372,6 +375,7 @@ async function handleTaskCreated(input: TaskInput) {
                             <strong>Status:</strong>{' '}
                             {task.status}
                           </p>
+                          <TaskComments taskId={task.id} />
                         </li>
                       ))}
                     </ul>
